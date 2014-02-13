@@ -1,5 +1,4 @@
----
-  language: objective-c
+language: objective-c
 
-  script: Script/test-main-configurations.sh
+script: Script/test-main-configurations.sh
 
