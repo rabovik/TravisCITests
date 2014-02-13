@@ -16,7 +16,7 @@
 @implementation RSUITests
 
 - (void)testUI{
-    RSMyLibView *view = [[RSMyLibView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+    RSMyLibView *view = [[RSMyLibView alloc] initWithFrame:CGRectMake(0, 0, 200, 200)];
     STAssertNotNil(view, @"View is nil");
 }
 
