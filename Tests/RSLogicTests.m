@@ -34,4 +34,12 @@
     NSLog(@"%s %@ (%@) %s", "\e[0;33m", os, config, "\e[m");
 }
 
+- (void)testFailOnIOS6_1{
+    #if TARGET_OS_IPHONE
+    if ([UIDevice currentDevice].systemVersion.floatValue == 6.1f) {
+        STFail(@"Some fail on iOS 6.1");
+    }
+    #endif
+}
+
 @end
