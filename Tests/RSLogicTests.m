@@ -31,7 +31,12 @@
     #else
         NSString *config = @"Release";
     #endif
-    NSLog(@"%s %@ (%@) %s", "\e[0;33m", os, config, "\e[m");
+    #ifdef __LP64__
+        unsigned int bits = 64;
+    #else
+        unsigned int bits = 32;
+    #endif
+    NSLog(@"%s %@ %u-bit (%@) %s", "\e[0;33m", os, bits, config, "\e[m");
 }
 
 @end

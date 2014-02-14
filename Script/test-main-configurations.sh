@@ -1,54 +1,76 @@
 #!/bin/sh
 
+# Global settings
 project=XCode/TravisCI.xcodeproj
 
-function print_header()
-{
-    text=$1
-    echo "$(tput setaf 3)$(tput bold)$text$(tput sgr 0)"
+# Formatting output
+function red() {
+    eval "$1=\"$(tput setaf 1)$2$(tput sgr 0)\""
 }
 
+function green() {
+    eval "$1=\"$(tput setaf 2)$2$(tput sgr 0)\""
+}
+
+function yellow() {
+    eval "$1=\"$(tput setaf 3)$2$(tput sgr 0)\""
+}
+
+function bold() {
+    eval "$1=\"$(tput bold)$2$(tput sgr 0)\""
+}
+
+function echo_fmt() {
+    local str=$1
+    local color=$2
+    local bold=$3
+    if [ "$color" != '' ]; then 
+        $color str "$str" 
+    fi
+    if [ "$bold" != '' ]; then 
+        $bold str "$str" 
+    fi
+    echo $str
+}
+
+# Testing
 succeeded_count=0
-function process_xcodebuild_exit_code
-{
-    exitcode=$1
+function test() {
+    local options="$@"
+    echo_fmt "xcodebuild test -project $project $options" yellow
+
+    xcodebuild test -project $project "$@"
+    local exitcode=$?
     if [[ $exitcode != 0 ]] ; then
-        echo "$(tput setaf 1)xcodebuild exited with code $exitcode$(tput sgr 0)"
-        echo "$(tput setaf 1)$(tput bold)=== TESTS FAILED ===$(tput sgr 0)"
+        echo_fmt "xcodebuild exited with code $exitcode" red
+        echo_fmt "=== TESTS FAILED ===" red bold
         exit 1
     else
         ((succeeded_count++))
     fi
 }
 
-function print_result()
-{
-    echo "$(tput setaf 2)$(tput bold)=== SUCCEEDED $succeeded_count CONFIGURATIONS. ===$(tput sgr 0)"
+function test_ios() {
+    local scheme=$1
+    local iosversion=$2
+    local device="$3"
+    local configuration=$4
+    shift 4
+    echo_fmt "=== TEST SCHEME $scheme IOS $iosversion DEVICE $device CONFIGURATION $configuration ===" yellow bold
+
+    test -scheme "$scheme" \
+         -sdk iphonesimulator \
+         -destination OS="$iosversion",name="$device" \
+         -configuration "$configuration" \
+         "$@"
 }
 
-function test_ios()
-{
-    scheme=$1
-    iosversion=$2
-    device=$3
-    configuration=$4
-    print_header "=== TEST SCHEME $scheme IOS $iosversion DEVICE $device CONFIGURATION $configuration ==="
-    xcodebuild  -project $project \
-                -scheme $scheme \
-                -sdk iphonesimulator \
-                -destination platform="iOS Simulator",OS=$iosversion,name="$device" \
-                -configuration $configuration \
-                test
-    process_xcodebuild_exit_code $?
-}
-
-function test_osx()
-{
-    scheme=$1
-    configuration=$2
-    print_header "=== TEST SCHEME $scheme OSX CONFIGURATION $configuration ==="
-    xcodebuild  -project $project -scheme $scheme -configuration $configuration test
-    process_xcodebuild_exit_code $?
+function test_osx() {
+    local scheme=$1
+    local configuration=$2
+    shift 2
+    echo_fmt "=== TEST SCHEME $scheme OSX CONFIGURATION $configuration ===" yellow bold
+    test -scheme "$scheme" -configuration "$configuration" "$@"
 }
 
 # Logic tests
@@ -56,23 +78,23 @@ for configuration in Release Debug
 do
     for iosversion in 6.0 6.1 7.0 #5.0 5.1 # Mavericks does not support iOS 5 Simulator
     do
-        test_ios iOSLogicTests "$iosversion" "iPad" "$configuration"
+        test_ios "iOSLogicTests" "$iosversion" "iPad Retina" "$configuration"
     done
+
+    test_ios "iOSLogicTests-64bit" 7.0 "iPad Retina (64-bit)" "$configuration" ONLY_ACTIVE_ARCH=YES
     
-    test_osx OSXTests "$configuration"
-    
-    # Still can not test because of the XCode bug "Simulator is already in use"
-    #test_ios iOSLogicTests-64bit 7.0 "iPad Retina (64-bit)" "$configuration"
+    test_osx "OSXTests" "$configuration"    
 done
 
 # UI tests
-test_ios iOSUITests 6.0 iPhone Debug
+test_ios "iOSUITests" 6.0 "iPhone" Debug
 for device in "iPad" "iPhone Retina (3.5-inch)" "iPhone Retina (4-inch)" "iPad Retina"
 do
     for iosversion in 6.0 7.0
     do
-        test_ios iOSUITests "$iosversion" "$device" Debug
+        test_ios "iOSUITests" "$iosversion" "$device" Debug
     done
 done
 
-print_result
+# Result
+echo_fmt "=== SUCCEEDED $succeeded_count CONFIGURATIONS. ===" green bold

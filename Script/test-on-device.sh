@@ -1,44 +1,68 @@
 #!/bin/sh
 
+# Global settings
 project=XCode/TravisCI.xcodeproj
-device="iPad Yan"
+device="iPad Yan" # iOS 5.1.1
 
-function print_header()
-{
-    text=$1
-    echo "$(tput setaf 3)$(tput bold)$text$(tput sgr 0)"
+# Formatting output
+function red() {
+    eval "$1=\"$(tput setaf 1)$2$(tput sgr 0)\""
 }
 
+function green() {
+    eval "$1=\"$(tput setaf 2)$2$(tput sgr 0)\""
+}
+
+function yellow() {
+    eval "$1=\"$(tput setaf 3)$2$(tput sgr 0)\""
+}
+
+function bold() {
+    eval "$1=\"$(tput bold)$2$(tput sgr 0)\""
+}
+
+function echo_fmt() {
+    local str=$1
+    local color=$2
+    local bold=$3
+    if [ "$color" != '' ]; then 
+        $color str "$str" 
+    fi
+    if [ "$bold" != '' ]; then 
+        $bold str "$str" 
+    fi
+    echo $str
+}
+
+# Testing
 succeeded_count=0
-function process_xcodebuild_exit_code
-{
-    exitcode=$1
+function test() {
+    local options="$@"
+    echo_fmt "xcodebuild test -project $project $options" yellow
+
+    xcodebuild test -project $project "$@"
+    local exitcode=$?
     if [[ $exitcode != 0 ]] ; then
-        echo "$(tput setaf 1)xcodebuild exited with code $exitcode$(tput sgr 0)"
-        echo "$(tput setaf 1)$(tput bold)=== TESTS FAILED ===$(tput sgr 0)"
+        echo_fmt "xcodebuild exited with code $exitcode" red
+        echo_fmt "=== TESTS FAILED ===" red bold
         exit 1
     else
         ((succeeded_count++))
     fi
 }
 
-function print_result()
-{
-    echo "$(tput setaf 2)$(tput bold)=== SUCCEEDED $succeeded_count CONFIGURATIONS. ===$(tput sgr 0)"
-}
-
 function test_on_device()
 {
-    scheme=$1
-    configuration=$2
-    print_header "=== TEST SCHEME $scheme DEVICE $device CONFIGURATION $configuration ==="
-    xcodebuild  -project $project \
-                -scheme $scheme \
-                -sdk iphoneos \
-                -destination name="$device" \
-                -configuration $configuration \
-                test
-    process_xcodebuild_exit_code $?
+    local scheme=$1
+    local configuration=$2
+    shift 2
+    echo_fmt "=== TEST SCHEME $scheme DEVICE $device CONFIGURATION $configuration ===" yellow bold
+
+    test -scheme "$scheme" \
+         -sdk iphoneos \
+         -destination name="$device" \
+         -configuration "$configuration" \
+         "$@"
 }
 
 #Logic tests
@@ -50,4 +74,5 @@ done
 # UI tests
 test_on_device iOSUITests Debug
 
-print_result
+# Result
+echo_fmt "=== SUCCEEDED $succeeded_count CONFIGURATIONS. ===" green bold
