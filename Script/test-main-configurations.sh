@@ -39,8 +39,8 @@ function test() {
     local options="$@"
     echo_fmt "xcodebuild test -project $project $options" yellow
 
-    xcodebuild test -project $project "$@"
-    local exitcode=$?
+    xcodebuild test -project $project "$@" | xcpretty -c
+    local exitcode=${PIPESTATUS[0]}
     if [[ $exitcode != 0 ]] ; then
         echo_fmt "xcodebuild exited with code $exitcode" red
         echo_fmt "=== TESTS FAILED ===" red bold
